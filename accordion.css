@@ -1,0 +1,72 @@
+/*
+ * <accordion-group> v2.0.0 · base styles
+ * Theme it by overriding the custom properties below on any ancestor.
+ */
+accordion-group {
+  --accordion-border: color-mix(in srgb, currentColor 16%, transparent);
+  --accordion-hover: color-mix(in srgb, currentColor 5%, transparent);
+  --accordion-accent: currentColor;
+  --accordion-padding-block: 1rem;
+  --accordion-padding-inline: 1.25rem;
+  --accordion-icon-size: 0.55em;
+
+  display: block;
+  border-block-start: 1px solid var(--accordion-border);
+}
+
+accordion-group details {
+  border-block-end: 1px solid var(--accordion-border);
+}
+
+accordion-group summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: var(--accordion-padding-block) var(--accordion-padding-inline);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 160ms ease;
+}
+
+accordion-group summary::-webkit-details-marker {
+  display: none;
+}
+
+accordion-group summary:hover {
+  background-color: var(--accordion-hover);
+}
+
+accordion-group summary:focus-visible {
+  outline: 2px solid var(--accordion-accent);
+  outline-offset: -2px;
+}
+
+/* Chevron. `data-state` flips the moment a close begins; `[open]` covers no-JS. */
+accordion-group summary::after {
+  content: "";
+  flex: none;
+  margin-inline-start: auto;
+  inline-size: var(--accordion-icon-size);
+  block-size: var(--accordion-icon-size);
+  border-inline-end: 2px solid var(--accordion-accent);
+  border-block-end: 2px solid var(--accordion-accent);
+  transform: translateY(-25%) rotate(45deg);
+  transition: transform 280ms cubic-bezier(.2, .8, .2, 1);
+}
+
+accordion-group details:is([data-state="open"], [open]:not([data-state])) > summary::after {
+  transform: translateY(25%) rotate(-135deg);
+}
+
+accordion-group details > :not(summary) {
+  padding: 0 var(--accordion-padding-inline) calc(var(--accordion-padding-block) * 1.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  accordion-group summary,
+  accordion-group summary::after {
+    transition: none;
+  }
+}
