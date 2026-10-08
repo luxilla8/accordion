@@ -16,12 +16,12 @@
 <div class="page">
 
   <header class="masthead">
-    <p class="eyebrow">Web component · v2.0.0</p>
+    <p class="eyebrow">Web component · v2.1.0</p>
     <h1 class="wordmark">Accordion</h1>
     <div class="bellows" aria-hidden="true"></div>
     <p class="lede">A small, accessible accordion with no dependencies. It is built on the browser's own <code>&lt;details&gt;</code> element, so it works before the script loads, and the script adds the rest.</p>
     <dl class="specs">
-      <div><dt>Size, gzipped</dt><dd>3.4 kB</dd></div>
+      <div><dt>Size, gzipped</dt><dd>4.5 kB</dd></div>
       <div><dt>Dependencies</dt><dd>0</dd></div>
       <div><dt>Without JS</dt><dd>Still works</dd></div>
       <div><dt>License</dt><dd>MIT</dd></div>
@@ -48,6 +48,20 @@
           <button type="button" class="ghost" id="close-all">Close all</button>
         </div>
       </div>
+
+      <div class="motion-bar">
+        <fieldset class="chips">
+          <legend class="motion-label">Motion</legend>
+          <input type="radio" name="motion" id="motion-slide" value="slide" checked><label for="motion-slide">Slide</label>
+          <input type="radio" name="motion" id="motion-spring" value="spring"><label for="motion-spring">Spring</label>
+          <input type="radio" name="motion" id="motion-cascade" value="cascade"><label for="motion-cascade">Cascade</label>
+          <input type="radio" name="motion" id="motion-blur" value="blur"><label for="motion-blur">Blur</label>
+          <input type="radio" name="motion" id="motion-fade" value="fade"><label for="motion-fade">Fade</label>
+          <input type="radio" name="motion" id="motion-none" value="none"><label for="motion-none">None</label>
+        </fieldset>
+        <label class="slowmo" for="slowmo"><input type="checkbox" id="slowmo"> Slow motion</label>
+      </div>
+      <p class="motion-code"><code id="motion-code">&lt;accordion-group&gt;</code><span class="motion-note" id="motion-note" hidden>Your system asks for reduced motion, so every preset opens instantly.</span></p>
 
       <accordion-group id="changes" class="changes">
         <details id="it-finally-opens" name="changes" open>
@@ -82,8 +96,9 @@
         <details id="motion" name="changes">
           <summary><span class="tag tag-motion">Motion</span><span class="item-title">Animation that can change its mind</span></summary>
           <div class="panel">
-            <p>Heights animate with the Web Animations API, measured from the real content instead of a guessed <code>max-height</code>. Click a header twice quickly and the panel reverses from wherever it is. Longer panels take a little longer, up to about half a second.</p>
-            <p>If your system asks for reduced motion, panels open and close instantly.</p>
+            <p>Heights animate with the Web Animations API, measured from the real content instead of a guessed <code>max-height</code>. Click a header twice quickly and the panel reverses from wherever it is. Longer panels take a little longer.</p>
+            <p>Six presets set the feel. <strong>Spring</strong> uses a real damped-spring curve with a slight overshoot. <strong>Cascade</strong> brings each paragraph in one after another, like this one. <strong>Blur</strong> pulls the content into focus. Pick one above and it replays here.</p>
+            <p>If your system asks for reduced motion, every preset opens and closes instantly.</p>
           </div>
         </details>
 
@@ -136,7 +151,9 @@
               <thead><tr><th scope="col">Attribute</th><th scope="col">Effect</th></tr></thead>
               <tbody>
                 <tr><td><code>multiple</code></td><td>Lets several items stay open. Without it, opening one closes the others.</td></tr>
+                <tr><td><code>animation</code></td><td>Motion preset: <code>slide</code> (default), <code>spring</code>, <code>cascade</code>, <code>blur</code>, <code>fade</code> or <code>none</code>. Also accepts your own presets.</td></tr>
                 <tr><td><code>duration</code></td><td>Fixed animation length in milliseconds. By default it scales with the panel's height.</td></tr>
+                <tr><td><code>easing</code></td><td>Any CSS easing, such as <code>ease-in-out</code>, <code>steps(4)</code> or a <code>linear()</code> curve. Replaces the preset's easing.</td></tr>
                 <tr><td><code>open</code> <span class="where">on &lt;details&gt;</span></td><td>Starts that item open.</td></tr>
                 <tr><td><code>name</code> <span class="where">on &lt;details&gt;</span></td><td>Optional. Keeps the group one-at-a-time before the script loads.</td></tr>
               </tbody>
@@ -170,6 +187,23 @@
   const { item, open } = event.detail;
   analytics.track(open ? 'faq_open' : 'faq_close', { id: item.id });
 });</code></pre>
+          </div>
+        </details>
+
+        <details id="ref-custom-motion">
+          <summary>Custom motion</summary>
+          <div class="panel">
+            <p>Register a preset once, then use it by name. <code>enter</code> runs for each panel as it opens. It receives the timing to use and returns the animations it starts. <code>duration</code> and <code>easing</code> are optional and control the height.</p>
+<pre class="snippet"><code>AccordionGroup.animations.pop = {
+  easing: 'cubic-bezier(.3, 1.4, .6, 1)',
+  duration: (distance) =&gt; 300 + distance * 0.3,
+  enter: (panel, timing) =&gt; panel.animate(
+    { opacity: [0, 1], scale: [0.92, 1] },
+    timing,
+  ),
+};</code></pre>
+<pre class="snippet"><code>&lt;accordion-group animation="pop"&gt;…&lt;/accordion-group&gt;</code></pre>
+            <p>Closing always fades the content out, and an interrupted animation always reverses from where it is, whatever preset is active.</p>
           </div>
         </details>
 
@@ -230,8 +264,38 @@
         updateBellows();
       });
     });
-    document.getElementById('open-all').addEventListener('click', () => changes.openAll());
-    document.getElementById('close-all').addEventListener('click', () => changes.closeAll());
+    // Motion picker: set the attribute, show the code, replay on the open item.
+    const motionCode = document.getElementById('motion-code');
+    const slowmo = document.getElementById('slowmo');
+    let replay = 0;
+    const applyMotion = (preview) => {
+      const preset = document.querySelector('input[name="motion"]:checked').value;
+      const attrs = [];
+      if (preset === 'slide') changes.removeAttribute('animation');
+      else { changes.setAttribute('animation', preset); attrs.push(`animation="${preset}"`); }
+      if (slowmo.checked) { changes.setAttribute('duration', '1600'); attrs.push('duration="1600"'); }
+      else changes.removeAttribute('duration');
+      motionCode.textContent = `<accordion-group${attrs.map((a) => ' ' + a).join('')}>`;
+      if (!preview) return;
+      const target = changes.items.find((d) => changes.isOpen(d)) ?? changes.items[3];
+      clearTimeout(replay);
+      if (changes.isOpen(target)) {
+        changes.close(target);
+        replay = setTimeout(() => changes.open(target), slowmo.checked ? 1700 : 420);
+      } else {
+        changes.open(target);
+      }
+    };
+    document.querySelectorAll('input[name="motion"]').forEach((radio) =>
+      radio.addEventListener('change', () => applyMotion(true)));
+    slowmo.addEventListener('change', () => applyMotion(false));
+    document.getElementById('motion-note').hidden =
+      !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Anything the visitor does cancels a pending replay.
+    changes.addEventListener('click', () => clearTimeout(replay));
+    document.getElementById('open-all').addEventListener('click', () => { clearTimeout(replay); changes.openAll(); });
+    document.getElementById('close-all').addEventListener('click', () => { clearTimeout(replay); changes.closeAll(); });
 
     document.addEventListener('accordion-toggle', (event) => {
       const { item, open, index } = event.detail;

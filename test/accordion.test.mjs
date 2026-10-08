@@ -159,3 +159,50 @@ test('works without the script', async () => {
   await page.click('#b > summary');
   assert.deepEqual(await openIds(), ['b'], 'native name attribute keeps it exclusive');
 });
+
+for (const preset of ['slide', 'fade', 'spring', 'cascade', 'blur']) {
+  test(`"${preset}" preset opens, closes and cleans up`, async () => {
+    await load(`animation="${preset}" duration="200"`, { reducedMotion: 'no-preference' });
+    await page.click('#b > summary');
+    assert.ok(await page.evaluate(() => b.getAnimations({ subtree: true }).length > 0), 'animates');
+    await page.waitForFunction(() => !b.getAnimations({ subtree: true }).some((a) => a.playState === 'running'));
+    assert.deepEqual(await openIds(), ['b']);
+    await page.click('#b > summary');
+    await page.waitForFunction(() => !b.open);
+    assert.equal(await page.evaluate(() => b.getAnimations({ subtree: true }).filter((a) => !(a instanceof CSSTransition)).length), 0, 'no leftover fills');
+    assert.equal(await page.evaluate(() => getComputedStyle(b.querySelector('div')).opacity), '1');
+  });
+}
+
+test('animation="none" is instant', async () => {
+  await load('animation="none"', { reducedMotion: 'no-preference' });
+  await page.click('#b > summary');
+  assert.equal(await page.evaluate(() => b.open && b.getAnimations({ subtree: true }).filter((a) => !(a instanceof CSSTransition)).length), 0);
+});
+
+test('easing attribute overrides the preset', async () => {
+  await load('easing="steps(4)" duration="500"', { reducedMotion: 'no-preference' });
+  await page.click('#b > summary');
+  assert.equal(await page.evaluate(() => b.getAnimations()[0].effect.getTiming().easing), 'steps(4)');
+});
+
+test('closing fades the content out', async () => {
+  await load('duration="400"', { reducedMotion: 'no-preference' });
+  await page.click('#a > summary');
+  const opacity = await page.evaluate(() => new Promise((r) =>
+    setTimeout(() => r(Number(getComputedStyle(a.querySelector('div')).opacity)), 120)));
+  assert.ok(opacity < 1, `content is fading (opacity ${opacity})`);
+});
+
+test('custom presets can be registered', async () => {
+  await load('animation="pop" duration="100"', { reducedMotion: 'no-preference' });
+  const called = await page.evaluate(() => {
+    let calls = 0;
+    AccordionGroup.animations.pop = {
+      enter: (panel, timing) => { calls += 1; return panel.animate({ scale: [0.5, 1] }, timing); },
+    };
+    g.open('b');
+    return calls;
+  });
+  assert.equal(called, 1);
+});
