@@ -1,6 +1,6 @@
 {
   "name": "accordion-group",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A small, accessible, dependency-free accordion built on native <details>/<summary>.",
   "license": "MIT",
   "files": ["accordion.js", "accordion.css"],

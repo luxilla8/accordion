@@ -1,5 +1,5 @@
 /*!
- * <accordion-group> v2.0.0
+ * <accordion-group> v2.1.0
  * A small, accessible accordion built on native <details>/<summary>.
  * MIT License · https://github.com/luxilla8/accordion
  */
@@ -10,13 +10,71 @@
   const EASING = 'cubic-bezier(.2, .8, .2, 1)';
   const NAV_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End']);
 
+  // A damped spring (ratio 0.6, ~9% overshoot) sampled into a linear() curve.
+  const SPRING = CSS.supports('transition-timing-function', 'linear(0, 1)')
+    ? 'linear(0, 0.047, 0.163, 0.315, 0.478, 0.634, 0.771, 0.884, 0.97, 1.031, 1.07, 1.089, '
+      + '1.095, 1.09, 1.079, 1.064, 1.049, 1.034, 1.021, 1.011, 1.003, 0.997, 0.993, 0.991, '
+      + '0.991, 0.991, 0.993, 0.994, 0.995, 0.997, 0.998, 0.999, 1)'
+    : 'cubic-bezier(.34, 1.56, .64, 1)';
+
+  const autoDuration = (distance) => Math.min(520, 180 + distance * 0.5);
+
+  /*
+   * Animation presets, chosen with the `animation` attribute.
+   * Each one sets how the height moves (`easing`, `duration` from the distance
+   * in px) and how panel content arrives (`enter`, called once per panel with
+   * the timing to use; it returns the Animation objects it starts).
+   * Add your own: AccordionGroup.animations.myPreset = { enter(panel, timing) {…} }
+   */
+  const ANIMATIONS = {
+    slide: {
+      enter: (panel, t) => panel.animate(
+        { opacity: [0, 1], transform: ['translateY(-6px)', 'none'] },
+        { ...t, duration: t.duration * 0.9, delay: t.duration * 0.1 },
+      ),
+    },
+    fade: {
+      enter: (panel, t) => panel.animate(
+        { opacity: [0, 1] },
+        { ...t, easing: 'ease-out', duration: t.duration * 0.85, delay: t.duration * 0.15 },
+      ),
+    },
+    spring: {
+      easing: SPRING,
+      duration: (distance) => Math.min(820, 440 + distance * 0.4),
+      enter: (panel, t) => [
+        panel.animate({ transform: ['translateY(-16px) scale(.97)', 'none'] }, t),
+        panel.animate({ opacity: [0, 1] }, { ...t, easing: 'ease-out', duration: t.duration * 0.4 }),
+      ],
+    },
+    cascade: {
+      duration: (distance) => Math.min(620, 240 + distance * 0.5),
+      enter: (panel, t) => {
+        const pieces = panel.children.length ? [...panel.children] : [panel];
+        return pieces.map((el, i) => el.animate(
+          { opacity: [0, 1], transform: ['translateY(12px)', 'none'] },
+          { ...t, duration: t.duration * 0.8, delay: t.duration * 0.1 + Math.min(i, 8) * 70 },
+        ));
+      },
+    },
+    blur: {
+      enter: (panel, t) => panel.animate(
+        { opacity: [0, 1], filter: ['blur(10px)', 'blur(0)'], transform: ['scale(.985)', 'none'] },
+        { ...t, easing: 'ease-out' },
+      ),
+    },
+    none: null,
+  };
+
   class AccordionGroup extends HTMLElement {
     static observedAttributes = ['multiple'];
+    static animations = ANIMATIONS;
 
     // Where each item is heading. It can differ from `details.open`
     // while a close animation is still running.
     #target = new WeakMap();
-    #animations = new WeakMap();
+    #animations = new WeakMap(); // height animation per item, while it runs
+    #effects = new WeakMap(); // content animations per item (may outlast the height)
     #observer = null;
 
     connectedCallback() {
@@ -121,12 +179,16 @@
 
     #animate(d, open) {
       const summary = d.querySelector(':scope > summary');
-      // Read the current height before cancelling, so an interrupted
+      const panels = [...d.querySelectorAll(':scope > :not(summary)')];
+      // Read the current state before cancelling, so an interrupted
       // animation reverses from wherever it is mid-flight.
       const start = d.getBoundingClientRect().height;
-      this.#animations.get(d)?.cancel();
+      const interrupted = this.#animations.has(d);
+      const opacities = panels.map((panel) => Number(getComputedStyle(panel).opacity));
+      this.#stop(d);
 
-      if (reducedMotion.matches || !d.isConnected || start === 0) {
+      const preset = this.#preset();
+      if (!preset || reducedMotion.matches || !d.isConnected || start === 0) {
         d.open = open;
         return;
       }
@@ -135,30 +197,52 @@
       const borders = d.offsetHeight - d.clientHeight;
       const end = open ? d.scrollHeight + borders : summary.offsetHeight + borders;
       const distance = Math.abs(end - start);
-      const duration = Number(this.getAttribute('duration')) || Math.min(520, 180 + distance * 0.5);
+      const duration = Number(this.getAttribute('duration'))
+        || (preset.duration ?? autoDuration)(distance);
+      const easing = this.getAttribute('easing') || preset.easing || EASING;
 
       d.style.overflow = 'clip';
-      const animation = d.animate(
-        { height: [`${start}px`, `${end}px`] },
-        { duration, easing: EASING },
-      );
-      this.#animations.set(d, animation);
+      const height = d.animate({ height: [`${start}px`, `${end}px`] }, { duration, easing });
+      this.#animations.set(d, height);
 
-      if (open) {
-        for (const panel of d.querySelectorAll(':scope > :not(summary)')) {
-          panel.animate(
-            { opacity: [0, 1], transform: ['translateY(-6px)', 'none'] },
-            { duration: duration * 0.9, easing: EASING, delay: duration * 0.1, fill: 'backwards' },
+      const timing = { duration, easing, fill: 'backwards' };
+      const effects = panels.flatMap((panel, i) => {
+        if (!open) {
+          return panel.animate(
+            { opacity: [opacities[i], 0] },
+            { duration: duration * 0.5, easing: 'ease-in', fill: 'forwards' },
           );
         }
-      }
+        // Reversing a close: fade back from where it was, don't replay the entrance.
+        if (interrupted) {
+          return panel.animate({ opacity: [opacities[i], 1] }, { duration: duration * 0.5 });
+        }
+        return [].concat(preset.enter?.(panel, timing) ?? []);
+      });
+      this.#effects.set(d, effects);
 
-      animation.onfinish = () => {
-        if (this.#animations.get(d) !== animation) return;
+      height.onfinish = () => {
+        if (this.#animations.get(d) !== height) return;
         this.#animations.delete(d);
         d.style.overflow = '';
-        if (!open) d.open = false;
+        if (!open) {
+          d.open = false;
+          this.#stop(d); // clear the faded-out content now that it's hidden
+        }
       };
+    }
+
+    #preset() {
+      const name = this.getAttribute('animation') || 'slide';
+      if (name === 'none') return null;
+      return AccordionGroup.animations[name] ?? AccordionGroup.animations.slide;
+    }
+
+    #stop(d) {
+      this.#animations.get(d)?.cancel();
+      this.#animations.delete(d);
+      this.#effects.get(d)?.forEach((animation) => animation.cancel());
+      this.#effects.delete(d);
     }
 
     #onClick = (event) => {
