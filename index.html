@@ -1,27 +1,249 @@
 <!DOCTYPE html>
-<html>
- <head>
-    <meta charset="utf-8">
-    <link rel="stylesheet" href="style.css">
-    <title></title>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Accordion v2</title>
+  <meta name="description" content="A small, accessible, dependency-free accordion built on native details and summary.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="accordion.css">
+  <link rel="stylesheet" href="demo.css">
+  <script src="accordion.js" defer></script>
 </head>
-  <body>
-  
-<header>
-<h1 >Accordion</h1>
-</header>
+<body>
+<div class="page">
 
-<div class="accordion">
-  <button class="accordion-control" >accordion-control 1</button>
-  <div class="accordion-panel" >Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div>
+  <header class="masthead">
+    <p class="eyebrow">Web component · v2.0.0</p>
+    <h1 class="wordmark">Accordion</h1>
+    <div class="bellows" aria-hidden="true"></div>
+    <p class="lede">A small, accessible accordion with no dependencies. It is built on the browser's own <code>&lt;details&gt;</code> element, so it works before the script loads, and the script adds the rest.</p>
+    <dl class="specs">
+      <div><dt>Size, gzipped</dt><dd>3.4 kB</dd></div>
+      <div><dt>Dependencies</dt><dd>0</dd></div>
+      <div><dt>Without JS</dt><dd>Still works</dd></div>
+      <div><dt>License</dt><dd>MIT</dd></div>
+    </dl>
+  </header>
 
-  <button class="accordion-control">accordion-control 2</button>
-  <div class="accordion-panel" >Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div>
+  <main>
+    <section class="demo" aria-labelledby="demo-heading">
+      <div class="section-head">
+        <h2 id="demo-heading">What changed since 2018</h2>
+        <p>This list is the component. Open a few, try the arrow keys, and switch modes.</p>
+      </div>
 
-  <button class="accordion-control" >accordion-control 3</button>
-  <div class="accordion-panel">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div>
+      <div class="toolbar" role="group" aria-label="Demo controls">
+        <fieldset class="segmented">
+          <legend class="visually-hidden">Open mode</legend>
+          <input type="radio" name="mode" id="mode-single" value="single" checked>
+          <label for="mode-single">One at a time</label>
+          <input type="radio" name="mode" id="mode-multiple" value="multiple">
+          <label for="mode-multiple">Many at once</label>
+        </fieldset>
+        <div class="toolbar-actions">
+          <button type="button" class="ghost" id="open-all">Open all</button>
+          <button type="button" class="ghost" id="close-all">Close all</button>
+        </div>
+      </div>
+
+      <accordion-group id="changes" class="changes">
+        <details id="it-finally-opens" name="changes" open>
+          <summary><span class="tag tag-fix">Fix</span><span class="item-title">It finally opens</span></summary>
+          <div class="panel">
+            <p>The 2018 version never expanded a panel. It looked panels up with a class name that started with a dot, so the browser searched for a class literally called <code>.accordion-panel</code> and found nothing. Every click then failed on <code>panel.style</code>.</p>
+<pre class="diff"><code><span class="del">- var panel = document.getElementsByClassName(".accordion-panel");</span>
+<span class="del">- panel.style.maxHeight = panel.scrollHeight + "px";</span>
+<span class="add">+ &lt;details&gt;</span>
+<span class="add">+   &lt;summary&gt;Question&lt;/summary&gt;</span>
+<span class="add">+   &lt;div&gt;Answer&lt;/div&gt;</span>
+<span class="add">+ &lt;/details&gt;</span></code></pre>
+            <p>Version 2 doesn't look anything up. Each panel sits inside its own <code>&lt;details&gt;</code>, so there's nothing to get wrong.</p>
+          </div>
+        </details>
+
+        <details id="screen-readers" name="changes">
+          <summary><span class="tag tag-a11y">Access</span><span class="item-title">Screen readers know what it is</span></summary>
+          <div class="panel">
+            <p>A <code>&lt;summary&gt;</code> is announced as a button that reports whether it's expanded or collapsed. The browser keeps that state in sync, so there are no ARIA attributes to drift out of date.</p>
+            <p>The original used plain buttons with no state, so a screen reader user heard "accordion-control 1, button" and nothing about what it controlled.</p>
+          </div>
+        </details>
+
+        <details id="keyboard" name="changes">
+          <summary><span class="tag tag-a11y">Access</span><span class="item-title">Built for the keyboard</span></summary>
+          <div class="panel">
+            <p><kbd>Tab</kbd> reaches every header, and <kbd>Enter</kbd> or <kbd>Space</kbd> toggles it. Inside a group, <kbd>↑</kbd> <kbd>↓</kbd> move between headers and <kbd>Home</kbd> <kbd>End</kbd> jump to the first and last, following the WAI-ARIA Authoring Practices accordion pattern.</p>
+          </div>
+        </details>
+
+        <details id="motion" name="changes">
+          <summary><span class="tag tag-motion">Motion</span><span class="item-title">Animation that can change its mind</span></summary>
+          <div class="panel">
+            <p>Heights animate with the Web Animations API, measured from the real content instead of a guessed <code>max-height</code>. Click a header twice quickly and the panel reverses from wherever it is. Longer panels take a little longer, up to about half a second.</p>
+            <p>If your system asks for reduced motion, panels open and close instantly.</p>
+          </div>
+        </details>
+
+        <details id="without-javascript" name="changes">
+          <summary><span class="tag tag-sturdy">Sturdy</span><span class="item-title">Works before the JavaScript loads</span></summary>
+          <div class="panel">
+            <p>Without the script, every item still opens and closes, and the native <code>name</code> attribute keeps only one open at a time. In Chromium browsers, find in page (<kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>F</kbd>) opens the section that holds the match.</p>
+            <p>Items added later, by a framework or by hand, are picked up automatically.</p>
+          </div>
+        </details>
+
+        <details id="deep-links" name="changes">
+          <summary><span class="tag tag-sturdy">Sturdy</span><span class="item-title">Every section has an address</span></summary>
+          <div class="panel">
+            <p>Give an item an <code>id</code> and a link to <code>#that-id</code> opens it and scrolls it into view. Try it: <a href="#motion">open the animation section</a>.</p>
+          </div>
+        </details>
+      </accordion-group>
+
+      <p class="event-log"><span class="event-label">Last event</span> <output id="event-log" aria-live="polite">None yet. Open an item.</output></p>
+    </section>
+
+    <section class="usage" aria-labelledby="usage-heading">
+      <div class="section-head">
+        <h2 id="usage-heading">Use it</h2>
+        <p>Copy two files into your project. No build step.</p>
+      </div>
+<pre class="snippet"><code><span class="c">&lt;!-- in &lt;head&gt; --&gt;</span>
+&lt;link rel="stylesheet" href="accordion.css"&gt;
+&lt;script src="accordion.js" defer&gt;&lt;/script&gt;
+
+<span class="c">&lt;!-- anywhere --&gt;</span>
+&lt;accordion-group&gt;
+  &lt;details id="shipping" name="faq"&gt;
+    &lt;summary&gt;How long does shipping take?&lt;/summary&gt;
+    &lt;div&gt;Three to five working days.&lt;/div&gt;
+  &lt;/details&gt;
+  &lt;details id="returns" name="faq"&gt;
+    &lt;summary&gt;Can I return an order?&lt;/summary&gt;
+    &lt;div&gt;Yes, within 30 days.&lt;/div&gt;
+  &lt;/details&gt;
+&lt;/accordion-group&gt;</code></pre>
+
+      <h3 class="ref-heading">Reference</h3>
+      <accordion-group multiple class="reference">
+        <details id="ref-attributes" open>
+          <summary>Attributes</summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Attribute</th><th scope="col">Effect</th></tr></thead>
+              <tbody>
+                <tr><td><code>multiple</code></td><td>Lets several items stay open. Without it, opening one closes the others.</td></tr>
+                <tr><td><code>duration</code></td><td>Fixed animation length in milliseconds. By default it scales with the panel's height.</td></tr>
+                <tr><td><code>open</code> <span class="where">on &lt;details&gt;</span></td><td>Starts that item open.</td></tr>
+                <tr><td><code>name</code> <span class="where">on &lt;details&gt;</span></td><td>Optional. Keeps the group one-at-a-time before the script loads.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details id="ref-methods">
+          <summary>Methods</summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Method</th><th scope="col">Effect</th></tr></thead>
+              <tbody>
+                <tr><td><code>open(item)</code></td><td>Opens an item. <code>item</code> can be the element, its index, or its id.</td></tr>
+                <tr><td><code>close(item)</code></td><td>Closes an item.</td></tr>
+                <tr><td><code>toggle(item, force?)</code></td><td>Flips an item, or sets it when <code>force</code> is given.</td></tr>
+                <tr><td><code>openAll()</code></td><td>Opens every item, even in one-at-a-time mode.</td></tr>
+                <tr><td><code>closeAll()</code></td><td>Closes every item.</td></tr>
+                <tr><td><code>isOpen(item)</code></td><td>Where the item is heading, counting animations in progress.</td></tr>
+                <tr><td><code>items</code></td><td>The group's <code>&lt;details&gt;</code> elements. Nested groups are excluded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details id="ref-events">
+          <summary>Events</summary>
+          <div class="panel">
+            <p><code>accordion-toggle</code> fires on the group as soon as an item starts to open or close. It bubbles, and <code>event.detail</code> holds <code>{ item, open, index }</code>.</p>
+<pre class="snippet"><code>group.addEventListener('accordion-toggle', (event) =&gt; {
+  const { item, open } = event.detail;
+  analytics.track(open ? 'faq_open' : 'faq_close', { id: item.id });
+});</code></pre>
+          </div>
+        </details>
+
+        <details id="ref-keyboard">
+          <summary>Keyboard</summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
+              <tbody>
+                <tr><td><kbd>Enter</kbd> <kbd>Space</kbd></td><td>Toggle the focused item</td></tr>
+                <tr><td><kbd>↓</kbd> <kbd>↑</kbd></td><td>Next or previous header, wrapping at the ends</td></tr>
+                <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>First or last header</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details id="ref-styling">
+          <summary>Styling</summary>
+          <div class="panel">
+            <p>Override these custom properties on the group or any ancestor. Everything else is plain CSS you can restyle freely.</p>
+<pre class="snippet"><code>accordion-group {
+  --accordion-border: #e3dfe6;
+  --accordion-hover: #f4f1f6;
+  --accordion-accent: #c2477a;
+  --accordion-padding-block: 1rem;
+  --accordion-padding-inline: 1.25rem;
+}</code></pre>
+            <p>Each item carries <code>data-state="open"</code> or <code>"closed"</code>. It flips the moment a close begins, which is what the chevron uses.</p>
+          </div>
+        </details>
+      </accordion-group>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <p>First hand-coded in 2018 by <a href="https://github.com/luxilla8/accordion">luxilla8</a>. Rebuilt in 2026. MIT licensed.</p>
+  </footer>
 </div>
 
-    <script src="main.js"></script>
-  </body>
+<script>
+  // Demo wiring only. The component itself lives in accordion.js.
+  customElements.whenDefined('accordion-group').then(() => {
+    const changes = document.getElementById('changes');
+    const log = document.getElementById('event-log');
+    const bellows = document.querySelector('.bellows');
+    const groups = [...document.querySelectorAll('accordion-group')];
+
+    const updateBellows = () => {
+      const items = groups.flatMap((g) => g.items);
+      const open = items.filter((d) => d.closest('accordion-group').isOpen(d)).length;
+      bellows.style.setProperty('--open', (open / items.length).toFixed(3));
+    };
+
+    document.querySelectorAll('input[name="mode"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        changes.multiple = radio.value === 'multiple';
+        updateBellows();
+      });
+    });
+    document.getElementById('open-all').addEventListener('click', () => changes.openAll());
+    document.getElementById('close-all').addEventListener('click', () => changes.closeAll());
+
+    document.addEventListener('accordion-toggle', (event) => {
+      const { item, open, index } = event.detail;
+      const title = (item.querySelector('.item-title') ?? item.querySelector('summary')).textContent.trim();
+      if (event.target === changes) {
+        log.textContent = `item ${index} “${title}” ${open ? 'opened' : 'closed'}`;
+      }
+      updateBellows();
+    });
+
+    updateBellows();
+  });
+</script>
+</body>
 </html>
